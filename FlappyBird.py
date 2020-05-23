@@ -23,7 +23,12 @@ STAT_FONT = pygame.font.SysFont("comicsans", 30)
 
 ##################################
 generation = 0
-#################################3
+##################################
+DISCRETE_RECOMBINATION = True
+INTERMEDIATE_RECOMBINATION = False
+LINE_RECOMBINATION = False
+USING_MEAN = False
+##################################
 
 
 class Bird:
@@ -136,7 +141,7 @@ class Pipe:
         self.set_height()
 
     def set_height(self):
-        self.GAP = random.randint(170, 220)
+        self.GAP = random.randint(160, 210)
         self.height = random.randrange(50, 450)
         self.top = self.height - self.PIPE_TOP.get_height()
         self.bottom = self.height + self.GAP
@@ -295,11 +300,42 @@ def select_candidates(birds,size):
 
 def crossover(bird1,bird2):
     new_bird = Bird(230,350)
-    new_W1 = (bird1.W1 + bird2.W1)/2
-    new_W2 = (bird1.W2 + bird2.W2)/2
-    new_W3 = (bird1.W3 + bird2.W3)/2
-    new_B = (bird1.B + bird2.B)/2
-    new_bird.set_nn_values(new_W1,new_W2,new_W3,new_B)
+    values1 = [bird1.W1, bird1.W2, bird1.W3, bird1.B]
+    values2 = [bird2.W1, bird2.W2, bird2.W3, bird2.B]
+
+    if USING_MEAN:
+        new_W1 = (values1[0] + values2[0])/2
+        new_W2 = (values1[1] + values2[1])/2
+        new_W3 = (values1[2] + values2[2])/2
+        new_B = (values1[3] + values2[3])/2
+        new_bird.set_nn_values(new_W1,new_W2,new_W3,new_B)
+    elif LINE_RECOMBINATION:
+        p_value = random.random()
+        new_W1 = values1[0]*p_value + values2[0]*(1-p_value)
+        new_W2 = values1[1]*p_value + values2[1]*(1-p_value)
+        new_W3 = values1[2]*p_value + values2[2]*(1-p_value)
+        new_B = values1[3]*p_value + values2[3]*(1-p_value)
+        new_bird.set_nn_values(new_W1, new_W2, new_W3, new_B)
+    elif INTERMEDIATE_RECOMBINATION:
+        p_value = random.random()
+        new_W1 = values1[0] * p_value + values2[0] * (1 - p_value)
+        p_value = random.random()
+        new_W2 = values1[1] * p_value + values2[1] * (1 - p_value)
+        p_value = random.random()
+        new_W3 = values1[2] * p_value + values2[2] * (1 - p_value)
+        p_value = random.random()
+        new_B = values1[3] * p_value + values2[3] * (1 - p_value)
+        new_bird.set_nn_values(new_W1, new_W2, new_W3, new_B)
+    elif DISCRETE_RECOMBINATION:
+        p_value = random.random()
+        new_W1 = values1[0] if p_value > 0.5 else values2[0]
+        p_value = random.random()
+        new_W2 = values1[1] if p_value > 0.5 else values2[1]
+        p_value = random.random()
+        new_W3 = values1[2] if p_value > 0.5 else values2[2]
+        p_value = random.random()
+        new_B = values1[3] if p_value > 0.5 else values2[3]
+        new_bird.set_nn_values(new_W1, new_W2, new_W3, new_B)
     return new_bird
 
 
@@ -341,10 +377,10 @@ def controller():
     global generation
     birds = create_new_generation(100)
 
-    for i in range(10):
+    for i in range(20):
         dead_birds = evaluate_population(birds)
         average_score.append(mean([i.score for i in dead_birds]))
-        next_gen_parents = select_candidates(dead_birds, 30)
+        next_gen_parents = select_candidates(dead_birds, 50)
         print(next_gen_parents[0].W1, next_gen_parents[0].W2, next_gen_parents[0].W3, next_gen_parents[0].B)
         max_score.append(next_gen_parents[0].score)
         birds = next_generation(next_gen_parents, 100, 10)
