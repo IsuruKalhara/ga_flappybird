@@ -40,6 +40,7 @@ class Bird:
     W1 = 0
     W2 = 0
     W3 = 0
+    W4 = 0
     B = 0
     score = 0
 
@@ -54,10 +55,11 @@ class Bird:
         self.img = self.IMGS[0]
         self.score = 0
 
-    def set_nn_values(self, w1, w2, w3, b):
+    def set_nn_values(self, w1, w2, w3, w4, b):
         self.W1 = w1
         self.W2 = w2
         self.W3 = w3
+        self.W4 = w4
         self.B = b
 
     def jump(self):
@@ -169,6 +171,9 @@ class Pipe:
 
         return False
 
+    def increase_velocity(self, value):
+        self.VEL += value
+
 
 class Base:
     VEL = 5
@@ -221,7 +226,7 @@ def make_bird_jump(bird, pipes):
     index = 0
     if len(pipes) > 1 and bird.x > (pipes[index].x + pipes[index].PIPE_TOP.get_width()):
         index = 1
-    value = bird.W1*(pipes[index].x - bird.x) + bird.W2*(pipes[index].bottom - bird.y) + bird.W3*(bird.y - pipes[index].height) + bird.B
+    value = bird.W1*(pipes[index].x - bird.x) + bird.W2*(pipes[index].bottom - bird.y) + bird.W3*(bird.y - pipes[index].height) + bird.W4*pipes[index].VEL + bird.B
     if math.tanh(value) > 0:
         bird.jump()
 
@@ -263,7 +268,9 @@ def evaluate_population(birds):
 
         if add_pipe:
             score += 1
-            pipes.append(Pipe(600))
+            new_pipe = Pipe(600)
+            new_pipe.increase_velocity(int(score/10))
+            pipes.append(new_pipe)
 
         for r in rem:
             pipes.remove(r)
@@ -288,7 +295,7 @@ def create_new_generation(size):
     birds = []
     for i in range(size):
         bird = Bird(230, 350)
-        bird.set_nn_values(random.randint(-100, 100), random.randint(-100, 100), random.randint(-100, 100), random.randint(-100, 100))
+        bird.set_nn_values(random.randint(-100, 100), random.randint(-100, 100), random.randint(-100, 100), random.randint(-100, 100), random.randint(-100, 100))
         birds.append(bird)
     return birds
 
@@ -300,22 +307,24 @@ def select_candidates(birds,size):
 
 def crossover(bird1,bird2):
     new_bird = Bird(230,350)
-    values1 = [bird1.W1, bird1.W2, bird1.W3, bird1.B]
-    values2 = [bird2.W1, bird2.W2, bird2.W3, bird2.B]
+    values1 = [bird1.W1, bird1.W2, bird1.W3, bird1.W4, bird1.B]
+    values2 = [bird2.W1, bird2.W2, bird2.W3, bird2.W4, bird2.B]
 
     if USING_MEAN:
         new_W1 = (values1[0] + values2[0])/2
         new_W2 = (values1[1] + values2[1])/2
         new_W3 = (values1[2] + values2[2])/2
-        new_B = (values1[3] + values2[3])/2
-        new_bird.set_nn_values(new_W1,new_W2,new_W3,new_B)
+        new_W4 = (values1[3] + values2[3])/2
+        new_B = (values1[4] + values2[4])/2
+        new_bird.set_nn_values(new_W1, new_W2, new_W3, new_W4, new_B)
     elif LINE_RECOMBINATION:
         p_value = random.random()
         new_W1 = values1[0]*p_value + values2[0]*(1-p_value)
         new_W2 = values1[1]*p_value + values2[1]*(1-p_value)
         new_W3 = values1[2]*p_value + values2[2]*(1-p_value)
-        new_B = values1[3]*p_value + values2[3]*(1-p_value)
-        new_bird.set_nn_values(new_W1, new_W2, new_W3, new_B)
+        new_W4 = values1[3]*p_value + values2[3]*(1 - p_value)
+        new_B = values1[4]*p_value + values2[4]*(1-p_value)
+        new_bird.set_nn_values(new_W1, new_W2, new_W4, new_W3, new_B)
     elif INTERMEDIATE_RECOMBINATION:
         p_value = random.random()
         new_W1 = values1[0] * p_value + values2[0] * (1 - p_value)
@@ -324,8 +333,10 @@ def crossover(bird1,bird2):
         p_value = random.random()
         new_W3 = values1[2] * p_value + values2[2] * (1 - p_value)
         p_value = random.random()
-        new_B = values1[3] * p_value + values2[3] * (1 - p_value)
-        new_bird.set_nn_values(new_W1, new_W2, new_W3, new_B)
+        new_W4 = values1[3] * p_value + values2[3] * (1 - p_value)
+        p_value = random.random()
+        new_B = values1[4] * p_value + values2[4] * (1 - p_value)
+        new_bird.set_nn_values(new_W1, new_W2, new_W3, new_W4, new_B)
     elif DISCRETE_RECOMBINATION:
         p_value = random.random()
         new_W1 = values1[0] if p_value > 0.5 else values2[0]
@@ -334,21 +345,20 @@ def crossover(bird1,bird2):
         p_value = random.random()
         new_W3 = values1[2] if p_value > 0.5 else values2[2]
         p_value = random.random()
-        new_B = values1[3] if p_value > 0.5 else values2[3]
-        new_bird.set_nn_values(new_W1, new_W2, new_W3, new_B)
+        new_W4 = values1[3] if p_value > 0.5 else values2[3]
+        p_value = random.random()
+        new_B = values1[4] if p_value > 0.5 else values2[4]
+        new_bird.set_nn_values(new_W1, new_W2, new_W3, new_W4, new_B)
     return new_bird
 
 
 def mutation(bird):
-
-    values = [bird.W1, bird.W2, bird.W3, bird.B]
-    change_to = random.choice(range(4))
+    new_bird = Bird(230, 350)
+    values = [bird.W1, bird.W2, bird.W3, bird.W4, bird.B]
+    change_to = random.choice(range(5))
     values[change_to] = random.randint(-100, 100)
-    bird.W1 = values[0]
-    bird.W2 = values[1]
-    bird.W3 = values[2]
-    bird.B = values[3]
-    return bird
+    new_bird.set_nn_values(values[0],values[1],values[2],values[3],values[4])
+    return new_bird
 
 
 def next_generation(parent_birds, size, mutation_p):
